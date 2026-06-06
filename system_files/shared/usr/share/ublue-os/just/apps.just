@@ -9,6 +9,7 @@ jetbrains-toolbox:
 [group('Apps')]
 install-jetbrains-toolbox:
     #!/usr/bin/env bash
+    brew trust --tap ublue-os/homebrew-tap
     brew tap ublue-os/homebrew-tap
     brew install --cask jetbrains-toolbox-linux
 
@@ -53,6 +54,7 @@ bbrew:
     if ! command -v bbrew &>/dev/null ; then
         if gum confirm "Bold Brew is not installed, would you like to install it?" ; then
             set -e
+            brew trust --tap Valkyrie00/homebrew-bbrew
             brew install Valkyrie00/homebrew-bbrew/bbrew
             set +e
         else
@@ -60,15 +62,20 @@ bbrew:
         fi
     fi
     echo "Note: Some of these take a while to load, we'll keep working on it."
-    bbrew -f "/usr/share/ublue-os/homebrew/$(gum choose $(find "/usr/share/ublue-os/homebrew"/*.Brewfile -exec basename '{}' '.Brewfile' ';')).Brewfile"
+    CHOSEN="$(gum choose $(find "/usr/share/ublue-os/homebrew"/*.Brewfile -exec basename '{}' '.Brewfile' ';'))"
+    BREWFILE="/usr/share/ublue-os/homebrew/${CHOSEN}.Brewfile"
+    /usr/libexec/ublue-brew-trust-brewfile "$BREWFILE"
+    bbrew -f "$BREWFILE"
 
 cncf:
     #!/usr/bin/env bash
     if ! command -v bbrew &>/dev/null ; then
         if gum confirm "Bold Brew is not installed, would you like to install it?" ; then
+            brew trust --tap Valkyrie00/homebrew-bbrew
             brew install Valkyrie00/homebrew-bbrew/bbrew
         else
             exit 0
         fi
     fi
+    /usr/libexec/ublue-brew-trust-brewfile "/usr/share/ublue-os/homebrew/cncf.Brewfile"
     bbrew -f "/usr/share/ublue-os/homebrew/cncf.Brewfile"
