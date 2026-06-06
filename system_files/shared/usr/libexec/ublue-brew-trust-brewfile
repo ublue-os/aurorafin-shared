@@ -18,7 +18,6 @@ tap_pattern='^tap[[:space:]]+"([^"]+)"'
 while IFS= read -r line; do
   if [[ "$line" =~ $tap_pattern ]]; then
     tap="${BASH_REMATCH[1]}"
-    echo "Trusting tap: $tap"
     brew trust --tap "$tap"
   fi
 done <"$brewfile"
