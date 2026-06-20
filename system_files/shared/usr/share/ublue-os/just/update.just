@@ -31,7 +31,7 @@ update:
     # Guard Brew if the user does not own brew/doesn't exist
     if [[ -O /var/home/linuxbrew/.linuxbrew/bin/brew ]]; then
         # Upgrade will run brew update if needed
-        /var/home/linuxbrew/.linuxbrew/bin/brew upgrade
+        /var/home/linuxbrew/.linuxbrew/bin/brew upgrade -y
     fi
 
 alias auto-update := toggle-updates
