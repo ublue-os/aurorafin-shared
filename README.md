@@ -1,3 +1,5 @@
+# THIS REPO IS NOT USED ANYMORE. We have migrated everything to [get-aurora-dev/common](https://github.com/get-aurora-dev/common)
+
 # aurorafin-shared
 
 This is consumed by [aurora-common](https://github.com/get-aurora-dev/common) and [bluefin-common](https://github.com/projectbluefin/common) as a git submodule.
