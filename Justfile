@@ -47,48 +47,58 @@ shell-format:
 # Validate Brewfiles
 brew-lint dir="system_files/shared/usr/share/ublue-os/homebrew":
     #!/usr/bin/env bash
-    set -eoux pipefail
+    set -uo pipefail
 
-    STATUS_FILE=$(mktemp)
-    echo "PASS" > "$STATUS_FILE"
+    status_file="$(mktemp)"
+    : > "$status_file"
 
-    while IFS= read -r -d '' brewfile ; do
-      echo "::group:: ===$(basename $brewfile)==="
+    # Brewfiles in this repo are named like "cli.Brewfile", not literally "Brewfile".
+    while IFS= read -r -d '' brewfile; do
+      echo "::group:: ===$(basename "$brewfile")==="
 
-      grep -E -e "^tap" "$brewfile" > taps.Brewfile || true
-      echo "Syncing taps..."
-      brew bundle --file=./taps.Brewfile > /dev/null 2>&1 || true
+      # Single top-to-bottom pass: taps are declared before they're used, so we
+      # tap + trust each one as we reach it, then validate brew/cask entries as
+      # they come (Homebrew >=6 needs a tap added and trusted before it will
+      # resolve any formula/cask from it; there's no auto-tap).
+      while IFS= read -r line; do
+        if [[ "$line" =~ ^tap[[:space:]]+\"([^\"]+)\"(,[[:space:]]*\"([^\"]+)\")? ]]; then
+          name="${BASH_REMATCH[1]}"
+          remote="${BASH_REMATCH[3]}"
+          brew tap "$name" ${remote:+"$remote"} > /dev/null 2>&1 || true
+          brew trust --tap "$name" > /dev/null 2>&1 || true
 
-      # Extract combined list for parallel check
-      FORMULAS=$(grep -E '^\s*brew\s+["'\'']' "$brewfile" | sed -E 's/^\s*brew\s+["'\'']([^"'\'']+)["'\''].*/formula \1/' || true)
-      CASKS=$(grep -E '^\s*cask\s+["'\'']' "$brewfile" | sed -E 's/^\s*cask\s+["'\'']([^"'\'']+)["'\''].*/cask \1/' || true)
-
-      ENTRIES=$(printf "%s\n%s" "$FORMULAS" "$CASKS" | grep -v '^\s*$' || true)
-
-      if [ -n "$ENTRIES" ]; then
-        echo "$ENTRIES" | xargs -P 8 -I {} bash -c '
-          TYPE=$(echo "{}" | cut -d" " -f1)
-          NAME=$(echo "{}" | cut -d" " -f2)
-          if ! brew info --$TYPE "$NAME" &> /dev/null; then
-            echo "✗ $TYPE \"$NAME\" is invalid or missing tap"
-            echo "FAIL" >> "'"$STATUS_FILE"'"
+          # `brew info` has no `--tap` flag; taps are checked with `tap-info`.
+          if brew tap-info "$name" &>/dev/null; then
+            echo "✓ tap \"$name\" is valid"
           else
-            echo "✓ $TYPE \"$NAME\" is valid"
+            echo "✗ tap \"$name\" is invalid ($brewfile)"
+            echo "FAIL" >> "$status_file"
           fi
-        '
-      else
-        echo "No formulas or casks found."
-      fi
+        elif [[ "$line" =~ ^(brew|cask)[[:space:]]+\"([^\"]+)\" ]]; then
+          type="${BASH_REMATCH[1]}"
+          name="${BASH_REMATCH[2]}"
+
+          # The Brewfile DSL keyword is "brew", but `brew info` expects "--formula".
+          flag="$type"
+          [[ "$type" == "brew" ]] && flag="formula"
+
+          if brew info --"$flag" "$name" &>/dev/null; then
+            echo "✓ $type \"$name\" is valid"
+          else
+            echo "✗ $type \"$name\" is invalid or missing tap ($brewfile)"
+            echo "FAIL" >> "$status_file"
+          fi
+        fi
+      done < "$brewfile"
 
       echo "::endgroup::"
-    done < <(find "{{ dir }}" -iname '*\.Brewfile*' -print0)
+    done < <(find "{{ dir }}" -iname '*.Brewfile' -print0)
 
-    rm -f taps.Brewfile
-
-    if grep -q "FAIL" "$STATUS_FILE"; then
+    if grep -q FAIL "$status_file"; then
       echo "Validation complete. Some Brewfiles FAILED."
+      rm -f "$status_file"
       exit 1
-    else
-      echo "Validation complete. All Brewfiles PASSED."
-      exit 0
     fi
+
+    echo "Validation complete. All Brewfiles passed."
+    rm -f "$status_file"

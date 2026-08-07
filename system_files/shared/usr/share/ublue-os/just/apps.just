@@ -54,8 +54,7 @@ bbrew:
     if ! command -v bbrew &>/dev/null ; then
         if gum confirm "Bold Brew is not installed, would you like to install it?" ; then
             set -e
-            brew trust --tap Valkyrie00/homebrew-bbrew
-            brew install Valkyrie00/homebrew-bbrew/bbrew
+            brew install bbrew
             set +e
         else
             exit 0
@@ -71,8 +70,8 @@ cncf:
     #!/usr/bin/env bash
     if ! command -v bbrew &>/dev/null ; then
         if gum confirm "Bold Brew is not installed, would you like to install it?" ; then
-            brew trust --tap Valkyrie00/homebrew-bbrew
-            brew install Valkyrie00/homebrew-bbrew/bbrew
+
+            brew install bbrew
         else
             exit 0
         fi
